@@ -35,7 +35,19 @@ class Category:
     def add_product(self, product):
         if not isinstance(product, Product):
             raise TypeError
+        if product.quantity == 0:
+            raise ZeroDivisionError()
         self.__products.append(product)
+        print("Товар добавлен")
+
+    def average_price(self):
+        try:
+            if len(self.__products) == 0:
+                raise ZeroDivisionError
+            total_price = sum(product.price for product in self.__products)
+            return total_price / len(self.__products)
+        except ZeroDivisionError:
+            return 0
 
     # Вывод товаров в формате: Продукт, 80 руб. Остаток: 15 шт.
     @property
@@ -88,6 +100,10 @@ class Product(AbstractProduct, MixinLog):
     # Конструктор класса
     def __init__(self, name_product, description_product, price, quantity):
         super().__init__()
+        if quantity == 0:
+            raise ValueError("Товар с нулевым "
+                             "количеством не может быть добавлен")
+
         self.name_product = name_product
         self.description_product = description_product
         self._price = price
@@ -97,6 +113,9 @@ class Product(AbstractProduct, MixinLog):
     @staticmethod
     def new_product(name_product, description_product, price, quantity,
                     product_list):
+        if quantity == 0:
+            raise ValueError("Товар с нулевым "
+                             "количеством не может быть добавлен")
         # Проверка наличия дубликатов
         for product in product_list:
             if product.name_product == name_product:
@@ -147,7 +166,7 @@ class Product(AbstractProduct, MixinLog):
         )
 
 
-# Подкласс от родительского Product
+# обьект: Смартфон от родительского Product
 class Smartphone(Product, MixinLog):
     productivity: float
     model: str
@@ -183,7 +202,7 @@ class Smartphone(Product, MixinLog):
         )
 
 
-# Подкласс от родительского Product
+# обьект: Трава от родительского Product
 class Grass(Product):
     producing_country: str
     germination_period: int
@@ -216,22 +235,39 @@ class Grass(Product):
         )
 
 
+class ShellException(Exception):
+    def __init__(self, *args, **kwargs):
+        self.message = args[0] if args else ("Товар с нулевым "
+                                             "количеством не "
+                                             "может быть добавлен")
+
+
+# Выполнение заказа
 class Order(AbstractCategory):
     def __init__(self, name_category, description_category, product, quantity):
         super().__init__()
-        # Проверка продукта на схожесть класса и его наследников
-        if not isinstance(product, Product):
-            raise TypeError
-        # Проверка если количество заказа соответствует количеству на складе
-        if quantity > product.quantity:
-            raise (ValueError
-                   (f'Максимальное доступное количество {product.quantity}'))
-        self.name_category = name_category
-        self.description_category = description_category
-        self.product = product
-        self.quantity = quantity
-        self.total_price = product.price * quantity
-        product.quantity -= quantity
+        try:
+            if quantity == 0:
+                raise ShellException("товар с нулевым "
+                                     "количеством не может быть добавлен")
+            # Проверка продукта на схожесть класса и его наследников
+            if not isinstance(product, Product):
+                raise TypeError
+    # Проверка если количество заказа соответствует количеству на складе
+            if quantity > product.quantity:
+                raise ValueError(f'Максимальное доступное количество'
+                                 f' {product.quantity}')
+            self.name_category = name_category
+            self.description_category = description_category
+            self.product = product
+            self.quantity = quantity
+            self.total_price = product.price * quantity
+            product.quantity -= quantity
+            print("товар добавлен")
+        except ShellException as e:
+            print(e)
+        finally:
+            print("обработка добавления товара завершена")
 
     def __str__(self):
         return (
@@ -245,32 +281,38 @@ class Order(AbstractCategory):
 
 # Вводные данные
 if __name__ == '__main__':
-    product_1 = Product('Samsung', 'New_1', 99.99, 10)
-    product_2 = Product('iPhone', 'New_2', 89999, 5)
-    print(
-        f'\nОбщая цена для продуктов '
-        f'с одной категории: {product_1 + product_2}'
-    )
+    try:
+        product_1 = Product('Samsung', 'New_1', 99.99, 10)
+        product_2 = Product('iPhone', 'New_2', 89999, 5)
+#           product_3 = Product('iPhone', 'New_2', 89999, 0)
+        print(
+            f'\nОбщая цена для продуктов '
+            f'с одной категории: {product_1 + product_2}'
+        )
 
-    phone_1 = Smartphone(
-        'Iphone', 'New_1', 99.99, 10, 2000.00, '15 Pro', 512, 'Black'
-    )
-    phone_2 = Smartphone(
-        'Samsung', 'New_2', 89999, 5, 1000, 'A10', 256, 'White'
-    )
+        phone_1 = Smartphone(
+            'Iphone', 'New_1', 99.99, 10, 2000.00, '15 Pro', 512, 'Black'
+        )
+        phone_2 = Smartphone(
+            'Samsung', 'New_2', 89999, 5, 1000, 'A10', 256, 'White'
+        )
 
-    grass_1 = Grass(
-        'Мини-газон', 'Смесь трав', 1000, 10, 'Россия', 35, 'Светлый'
-    )
-    grass_2 = Grass(
-        'Газонная трава', 'Универсальный', 500.99, 20, 'США', 25, 'Темный'
-    )
+        grass_1 = Grass(
+            'Мини-газон', 'Смесь трав', 1000, 10, 'Россия', 35, 'Светлый'
+        )
+        grass_2 = Grass(
+            'Газонная трава', 'Универсальный', 500.99, 20, 'США', 25, 'Темный'
+        )
 
-    print(f'\n{phone_1}')
-    print(
-        f'Общая сумма товаров в категории Смартфон: {phone_1 + phone_2}'
-    )
-    print(f'\n{grass_1}')
-    print(
-        f'Общая сумма товаров в категории Трава газонная: {grass_1 + grass_2}'
-    )
+        print(f'\n{phone_1}')
+        print(
+            f'Общая сумма товаров в категории Смартфон: {phone_1 + phone_2}'
+        )
+        print(f'\n{grass_1}')
+        print(
+            f'Общая сумма товаров в категории '
+            f'Трава газонная: {grass_1 + grass_2}'
+        )
+
+    except (ValueError, ZeroDivisionError, TypeError) as e:
+        print(e)
